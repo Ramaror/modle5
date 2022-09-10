@@ -43,28 +43,26 @@ const (
 
 func main() {
 	cashe := Cashe{storage: make(map[string]int)}
-	var wg sync.WaitGroup
+	semaphore := make(chan int, 4)
 	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			cashe.Increase(k1, step)
-			time.Sleep(time.Millisecond)
-		}()
-		wg.Wait()
+		semaphore <- i
+
+		select {
+		case <-semaphore:
+			go func() {
+				cashe.Increase(k1, step)
+				time.Sleep(time.Millisecond)
+			}()
+			go func() {
+				i := i
+				cashe.Set(k1, step*i)
+				time.Sleep(time.Millisecond)
+			}()
+		}
+
 	}
 
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		i := i
-		go func() {
-			defer wg.Done()
-			cashe.Set(k1, step*i)
-			time.Sleep(time.Millisecond)
-		}()
-		wg.Wait()
-	}
-
+	time.Sleep(time.Second)
 	fmt.Println(cashe.Get(k1))
 
 }
